@@ -541,12 +541,13 @@
 // Specials are seasonal/holiday sets pulled from the full recipe binder (500+ drinks).
 // They're built in ahead of time and pinned to the top of the order list while active —
 // nothing here needs a rebuild when the season changes, just a swap of which set is live.
-var SPECIAL_CATEGORIES = ['Back to School'];
+var SPECIAL_CATEGORIES = ['Back to School', 'Halloween'];
 var REGULAR_CATEGORIES = ['Loaded Teas','Beauty Teas','Pretty Protein','Shakes','Smoothie Bowls','Iced Coffee','Snacks'];
 var CATEGORIES = SPECIAL_CATEGORIES.concat(REGULAR_CATEGORIES);
 
 var CAT_COLORS = {
   'Back to School': '#FF6F3C',
+  'Halloween': '#C43E1C',
   'Loaded Teas': '#E5266B',
   'Beauty Teas': '#F0508A',
   'Pretty Protein': '#B81753',
@@ -568,6 +569,20 @@ var MENU = {
     { name:'Candy Apple', flavors:'beauty boost, strawberry, rainbow, green apple', price:7.75, prep:2, color:'linear-gradient(135deg,#EF5350,#9CCC65)' },
     { name:"Summer's Over", flavors:'peach mango x2, pineapple, cherry', price:8.50, prep:3, color:'linear-gradient(135deg,#FF7043,#FFCA28)' },
     { name:'Teacher Fuel', flavors:'wild berry x2, strawberry, banana, pineapple', price:8.50, prep:3, color:'linear-gradient(135deg,#AB47BC,#EF9A9A)' }
+  ],
+  'Halloween': [
+    { name:'Boogeyman', flavors:'blue blast, pineapple', price:7.50, prep:2, color:'linear-gradient(135deg,#263238,#42A5F5)' },
+    { name:'Candy Corn', flavors:'strawberry, mango, lemonade', price:7.50, prep:2, color:'linear-gradient(135deg,#FFEE58,#FF8A65)' },
+    { name:'Trick or Treat', flavors:'huckleberry, rainbow, orange', price:7.50, prep:2, color:'linear-gradient(135deg,#8D6E63,#F57C00)' },
+    { name:"Witches' Brew", flavors:'grape, orange liftoff poured on top', price:7.50, prep:2, color:'linear-gradient(135deg,#6A1B9A,#7CB342)' },
+    { name:'Zombie Apocalypse', flavors:'sour green apple, pina colada, sprinkle of cherry', price:7.50, prep:2, color:'linear-gradient(135deg,#558B2F,#EF5350)' },
+    { name:'Vampire Kisses', flavors:'grape, blue blast, strawberry', price:7.50, prep:2, color:'linear-gradient(135deg,#4A148C,#C62828)' },
+    { name:'Pumpkin Patch', flavors:'melon, green apple', price:7.50, prep:2, color:'linear-gradient(135deg,#EF6C00,#8BC34A)' },
+    { name:'Magic Spell', flavors:'green apple, sour apple', price:7.50, prep:2, color:'linear-gradient(135deg,#2E7D32,#9CCC65)' },
+    { name:'Cursed Water', flavors:'blue raspberry, blackberry', price:7.50, prep:2, color:'linear-gradient(135deg,#1A237E,#4A148C)' },
+    { name:'Bat Wings', flavors:'green apple, limeade, strawberry', price:7.50, prep:2, color:'linear-gradient(135deg,#212121,#EF5350)' },
+    { name:'Beetle Juice', flavors:'green apple, grape', price:7.50, prep:2, color:'linear-gradient(135deg,#33691E,#212121)' },
+    { name:'Bad Juju', flavors:'grape, peach papaya', price:7.50, prep:2, color:'linear-gradient(135deg,#4E342E,#FF8A65)' }
   ],
   'Loaded Teas': [
     { name:'Bob Marley', flavors:'blue raspberry, piña colada, watermelon, rainbow', price:7.50, prep:2, color:'linear-gradient(135deg,#7C4DFF,#26C6DA)' },
