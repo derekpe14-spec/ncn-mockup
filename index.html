@@ -227,6 +227,11 @@
   }
   .accordion-cat.open .accordion-chevron{transform:rotate(90deg);}
   .accordion-cat.open .accordion-header{border-bottom:1px solid var(--line);}
+  .accordion-cat.live{border-color:var(--orange);box-shadow:0 0 0 2px var(--orange-soft) inset;}
+  .live-badge{
+    font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;
+    padding:3px 8px;border-radius:999px;background:var(--orange);color:#fff;flex:none;
+  }
 
   .accordion-body{
     display:flex;flex-direction:column;gap:8px;
@@ -533,9 +538,15 @@
 </div>
 
 <script>
-var CATEGORIES = ['Loaded Teas','Beauty Teas','Pretty Protein','Shakes','Smoothie Bowls','Iced Coffee','Snacks'];
+// Specials are seasonal/holiday sets pulled from the full recipe binder (500+ drinks).
+// They're built in ahead of time and pinned to the top of the order list while active —
+// nothing here needs a rebuild when the season changes, just a swap of which set is live.
+var SPECIAL_CATEGORIES = ['Back to School'];
+var REGULAR_CATEGORIES = ['Loaded Teas','Beauty Teas','Pretty Protein','Shakes','Smoothie Bowls','Iced Coffee','Snacks'];
+var CATEGORIES = SPECIAL_CATEGORIES.concat(REGULAR_CATEGORIES);
 
 var CAT_COLORS = {
+  'Back to School': '#FF6F3C',
   'Loaded Teas': '#E5266B',
   'Beauty Teas': '#F0508A',
   'Pretty Protein': '#B81753',
@@ -546,6 +557,18 @@ var CAT_COLORS = {
 };
 
 var MENU = {
+  'Back to School': [
+    { name:'Planning Period', flavors:'lemonade, white grape, orange, strawberry', price:7.50, prep:2, color:'linear-gradient(135deg,#FFD54F,#FF8A65)' },
+    { name:'First Day', flavors:'strawberry, peach, pina colada, blue raspberry', price:7.50, prep:2, color:'linear-gradient(135deg,#4FC3F7,#F06292)' },
+    { name:'Detention', flavors:'blueberry, pina colada', price:7.50, prep:2, color:'linear-gradient(135deg,#5C6BC0,#26C6DA)' },
+    { name:'Teacher Talk', flavors:'raspberry, strawberry, mango', price:7.50, prep:2, color:'linear-gradient(135deg,#EC407A,#FFB74D)' },
+    { name:'Recess', flavors:'rainbow, coconut, blue blast', price:7.50, prep:2, color:'linear-gradient(135deg,#66BB6A,#42A5F5)' },
+    { name:'Struggle Bus', flavors:'peach, papaya, passion fruit, pineapple', price:7.50, prep:2, color:'linear-gradient(135deg,#FFA726,#FFEE58)' },
+    { name:'Prom Queen', flavors:'beauty boost, strawberry, lemonade', price:7.75, prep:2, color:'linear-gradient(135deg,#F48FB1,#FCE4EC)' },
+    { name:'Candy Apple', flavors:'beauty boost, strawberry, rainbow, green apple', price:7.75, prep:2, color:'linear-gradient(135deg,#EF5350,#9CCC65)' },
+    { name:"Summer's Over", flavors:'peach mango x2, pineapple, cherry', price:8.50, prep:3, color:'linear-gradient(135deg,#FF7043,#FFCA28)' },
+    { name:'Teacher Fuel', flavors:'wild berry x2, strawberry, banana, pineapple', price:8.50, prep:3, color:'linear-gradient(135deg,#AB47BC,#EF9A9A)' }
+  ],
   'Loaded Teas': [
     { name:'Bob Marley', flavors:'blue raspberry, piña colada, watermelon, rainbow', price:7.50, prep:2, color:'linear-gradient(135deg,#7C4DFF,#26C6DA)' },
     { name:'Skittles', flavors:'cherry limeade, grape', price:7.50, prep:2, color:'linear-gradient(135deg,#EC407A,#7C4DFF)' },
@@ -610,7 +633,7 @@ var ORDERS = [
 ];
 
 
-var state = { view: 'menu', openCat: null, selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM', station: 'Tea & Shaker' };
+var state = { view: 'menu', openCat: (SPECIAL_CATEGORIES[0] || null), selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM', station: 'Tea & Shaker' };
 
 function showView(v){
   document.getElementById('panel-customer').classList.toggle('active', v==='customer');
@@ -628,6 +651,7 @@ function renderAccordion(){
     var open = state.openCat === c;
     var items = MENU[c] || [];
     var color = CAT_COLORS[c] || 'var(--pink)';
+    var isSpecial = SPECIAL_CATEGORIES.indexOf(c) > -1;
     var body = '';
     if(open){
       body = '<div class="accordion-body">' + items.map(function(it, idx){
@@ -649,10 +673,11 @@ function renderAccordion(){
         + '</div>';
       }).join('') + '</div>';
     }
-    return '<div class="accordion-cat'+(open?' open':'')+'">'
+    return '<div class="accordion-cat'+(open?' open':'')+(isSpecial?' live':'')+'">'
       + '<div class="accordion-header" style="--cat-color:'+color+'" onclick="toggleCat(\''+c+'\')">'
         + '<span class="accordion-dot"></span>'
         + '<span class="accordion-name">'+c+'</span>'
+        + (isSpecial ? '<span class="live-badge">🎒 Live now</span>' : '')
         + '<span class="accordion-count num">'+items.length+'</span>'
         + '<span class="accordion-chevron">▶</span>'
       + '</div>'
