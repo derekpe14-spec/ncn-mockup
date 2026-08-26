@@ -150,6 +150,17 @@
   }
   .toggle-hint{font-size:13.5px;color:var(--ink-soft);font-weight:700;}
 
+  .preview-row{
+    margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 14px;border:1px dashed var(--line);border-radius:12px;background:var(--paper-sunken);
+  }
+  .preview-row label{font-size:12.5px;font-weight:800;color:var(--ink-soft);}
+  .preview-row select{
+    font-family:'Nunito';font-weight:700;font-size:13px;color:var(--ink);
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+  }
+  .preview-note{font-size:11.5px;color:var(--ink-soft);font-weight:600;font-style:italic;}
+
   /* ---------- stage ---------- */
   .stage{margin-top:30px;position:relative;}
   .panel{display:none;animation:fadein .35s ease;}
@@ -512,6 +523,27 @@
       </div>
       <span class="toggle-hint" id="view-hint">What a customer sees on their phone</span>
     </div>
+
+    <div class="preview-row">
+      <label for="preview-select">Preview the menu as of:</label>
+      <select id="preview-select" onchange="setPreviewDate(this.value)">
+        <option value="today">Today (real date)</option>
+        <option value="8,20">Back to School — Aug</option>
+        <option value="9,20">Fall Menu — Sept</option>
+        <option value="10,15">Halloween — Oct</option>
+        <option value="12,10">Christmas — Dec</option>
+        <option value="2,8">Valentine's Day — Feb</option>
+        <option value="2,20">Mardi Gras — Feb</option>
+        <option value="4,1">Easter — Apr</option>
+        <option value="5,4">Star Wars Day — May</option>
+        <option value="5,5">Cinco de Mayo — May</option>
+        <option value="6,10">Summer — Jun</option>
+        <option value="7,2">July 4th — Jul</option>
+        <option value="7,10">Stranger Things — Jul</option>
+        <option value="7,25">Shark Week — Jul</option>
+      </select>
+      <span class="preview-note">Demo only — the real site just uses today's date, no picker.</span>
+    </div>
   </div>
 
   <div class="stage">
@@ -565,7 +597,7 @@
       </div>
       <div class="why-card">
         <span class="tag">Your whole recipe book</span>
-        <p><strong>Every drink you've ever named — built in once, not re-typed each season.</strong> Halloween, Star Wars Day, Christmas, all of it lives in the catalog. Only what's actually running gets the "Live now" badge up top.</p>
+        <p><strong>Every drink you've ever named — built in once, not re-typed each season.</strong> Halloween, Star Wars Day, Christmas, all of it lives in the system. But a customer only ever sees what's actually in season — the rest stays off the menu until its dates come back around, automatically.</p>
       </div>
       <div class="why-card">
         <span class="tag">The last truffle</span>
@@ -587,16 +619,42 @@
 </div>
 
 <script>
-// Specials are seasonal/holiday sets pulled from the full recipe binder (500+ drinks).
-// They're built in ahead of time and pinned to the top of the order list while active —
-// nothing here needs a rebuild when the season changes, just a swap of which set is live.
-var SPECIAL_CATEGORIES = ['Back to School', 'Halloween'];
+// Regular categories are always on the menu, every day.
 var REGULAR_CATEGORIES = ['Loaded Teas','Beauty Teas','Pretty Protein','Shakes','Smoothie Bowls','Iced Coffee','Snacks'];
-// Archive categories = the rest of the recipe binder (every other seasonal/holiday set she's
-// ever run). Fully built in and orderable so the demo shows the true scope of what's in Square —
-// just not pinned/badged, since only what's actually in-season gets the "Live now" treatment.
-var ARCHIVE_CATEGORIES = ['Fall Menu','Easter','Mardi Gras','Cinco de Mayo','Shark Week',"Valentine's Day",'Summer','Christmas','Stranger Things','Star Wars Day','July 4th'];
-var CATEGORIES = SPECIAL_CATEGORIES.concat(REGULAR_CATEGORIES).concat(ARCHIVE_CATEGORIES);
+
+// Everything else is a seasonal/holiday set pulled from the full recipe binder (500+ drinks).
+// They're built into the catalog once, ahead of time, so nothing gets re-typed each year —
+// but a category only shows up on the customer menu, and only becomes orderable, while
+// today's date falls inside its window below. Whatever IS in-window also gets pinned to the
+// top with the "Live now" badge automatically. No manual on/off switch to remember per season.
+var SEASONAL_WINDOWS = {
+  'Back to School':  { start:[8,1],   end:[9,15] },
+  'Halloween':       { start:[10,1],  end:[10,31] },
+  'Fall Menu':       { start:[9,16],  end:[11,15] },
+  "Valentine's Day": { start:[2,1],   end:[2,14] },
+  'Mardi Gras':      { start:[2,15],  end:[3,5] },
+  'Easter':          { start:[3,15],  end:[4,20] },
+  'Cinco de Mayo':   { start:[5,1],   end:[5,5] },
+  'Star Wars Day':   { start:[5,1],   end:[5,4] },
+  'Summer':          { start:[6,1],   end:[8,15] },
+  'July 4th':        { start:[6,25],  end:[7,5] },
+  'Stranger Things': { start:[7,1],   end:[7,19] },
+  'Shark Week':      { start:[7,20],  end:[7,31] },
+  'Christmas':       { start:[12,1],  end:[12,26] }
+};
+
+function isSeasonActive(cat, d){
+  var w = SEASONAL_WINDOWS[cat];
+  if(!w) return false;
+  var val = (d.getMonth()+1)*100 + d.getDate();
+  var start = w.start[0]*100 + w.start[1];
+  var end = w.end[0]*100 + w.end[1];
+  return start <= end ? (val >= start && val <= end) : (val >= start || val <= end);
+}
+
+function activeSeasonalCategories(d){
+  return Object.keys(SEASONAL_WINDOWS).filter(function(c){ return isSeasonActive(c, d); });
+}
 
 var CAT_COLORS = {
   'Back to School': '#FF6F3C',
@@ -1617,7 +1675,19 @@ MENU['July 4th'] = [
 ];
 
 
-var state = { view: 'menu', openCat: (SPECIAL_CATEGORIES[0] || null), selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM' };
+var state = { view: 'menu', previewDate: new Date(), openCat: null, selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM' };
+state.openCat = activeSeasonalCategories(state.previewDate)[0] || REGULAR_CATEGORIES[0];
+
+function setPreviewDate(val){
+  if(val === 'today'){ state.previewDate = new Date(); }
+  else {
+    var parts = val.split(',');
+    var y = (new Date()).getFullYear();
+    state.previewDate = new Date(y, parseInt(parts[0],10)-1, parseInt(parts[1],10));
+  }
+  state.openCat = activeSeasonalCategories(state.previewDate)[0] || REGULAR_CATEGORIES[0];
+  renderAccordion();
+}
 
 function showView(v){
   document.getElementById('panel-customer').classList.toggle('active', v==='customer');
@@ -1632,11 +1702,13 @@ function showView(v){
 
 function renderAccordion(){
   var el = document.getElementById('accordion-list');
-  el.innerHTML = CATEGORIES.map(function(c){
+  var liveNow = activeSeasonalCategories(state.previewDate);
+  var cats = liveNow.concat(REGULAR_CATEGORIES);
+  el.innerHTML = cats.map(function(c){
     var open = state.openCat === c;
     var items = MENU[c] || [];
     var color = CAT_COLORS[c] || 'var(--pink)';
-    var isSpecial = SPECIAL_CATEGORIES.indexOf(c) > -1;
+    var isSpecial = liveNow.indexOf(c) > -1;
     var body = '';
     if(open){
       body = '<div class="accordion-body">' + items.map(function(it, idx){
