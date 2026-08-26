@@ -381,6 +381,39 @@
   }
   .queue-summary b{color:var(--ink);font-variant-numeric:tabular-nums;}
   .queue-summary .late-count b{color:var(--pink);}
+
+  .sticker-toggle-row{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:12px 16px;border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .sticker-toggle-text{font-size:13px;color:var(--ink);}
+  .sticker-toggle-note{font-size:11.5px;color:var(--ink-soft);font-style:italic;}
+  .btn-sticker{
+    background:var(--paper);border:1px solid var(--line);color:var(--ink);
+    font-weight:800;font-size:12px;padding:8px 12px;border-radius:10px;cursor:pointer;
+    align-self:flex-start;
+  }
+
+  /* ---------- printable cup sticker ---------- */
+  #sticker-print-area{display:none;}
+  .sticker{
+    width:2in;padding:0.12in;box-sizing:border-box;
+    font-family:'Nunito',sans-serif;color:#000;background:#fff;
+    display:flex;flex-direction:column;gap:0.05in;
+  }
+  .sticker-brand{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+  .sticker-name{font-family:'Fredoka';font-weight:600;font-size:17px;line-height:1.15;}
+  .sticker-drink{font-weight:800;font-size:13px;line-height:1.2;}
+  .sticker-mods{font-size:10.5px;font-weight:700;}
+  .sticker-num{font-size:9px;font-weight:700;margin-top:0.05in;border-top:1px dashed #000;padding-top:0.05in;}
+
+  @media print{
+    body > *:not(#sticker-print-area){display:none !important;}
+    #sticker-print-area{display:block !important;}
+    html, body{height:auto !important;margin:0 !important;}
+    @page{size:2in 3in;margin:0;}
+  }
   .station-tag{
     display:inline-flex;align-items:center;gap:5px;
     font-size:11px;font-weight:800;letter-spacing:.02em;
@@ -582,6 +615,11 @@
           <div class="device-hint">Runs on a spare iPad today · same page on a mounted TV later, no rebuild</div>
         </div>
         <div class="queue-summary" id="queue-summary"></div>
+        <label class="sticker-toggle-row">
+          <span class="switch"><input type="checkbox" onchange="toggleStickerMode(this.checked)"><span class="track"><span class="knob"></span></span></span>
+          <span class="sticker-toggle-text"><strong>Print cup stickers</strong> — name + order on a label, Starbucks-style</span>
+          <span class="sticker-toggle-note">Optional — try printing a sample and see if it's worth it</span>
+        </label>
         <div class="order-grid" id="order-grid"></div>
       </div>
     </div>
@@ -617,6 +655,9 @@
   </div>
 
 </div>
+
+<!-- Only this prints when "Print sticker" is used — everything else is hidden via @media print -->
+<div id="sticker-print-area"></div>
 
 <script>
 // Regular categories are always on the menu, every day.
@@ -1675,7 +1716,26 @@ MENU['July 4th'] = [
 ];
 
 
-var state = { view: 'menu', previewDate: new Date(), openCat: null, selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM' };
+var state = { view: 'menu', previewDate: new Date(), openCat: null, selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM', stickerMode: false };
+
+function toggleStickerMode(v){
+  state.stickerMode = v;
+  renderOrders();
+}
+
+function printSticker(id){
+  var o = ORDERS.find(function(x){return x.id===id;});
+  if(!o) return;
+  document.getElementById('sticker-print-area').innerHTML =
+    '<div class="sticker">'
+      + '<div class="sticker-brand">New Castle Nutrition</div>'
+      + '<div class="sticker-name">'+o.name+'</div>'
+      + '<div class="sticker-drink">'+o.item+'</div>'
+      + (o.addons ? '<div class="sticker-mods">'+o.addons+'</div>' : '')
+      + '<div class="sticker-num">#'+o.id+' &middot; '+o.station+'</div>'
+    + '</div>';
+  window.print();
+}
 state.openCat = activeSeasonalCategories(state.previewDate)[0] || REGULAR_CATEGORIES[0];
 
 function setPreviewDate(val){
@@ -2008,7 +2068,10 @@ function renderOrders(){
         + '<div class="addons">for '+o.name+'</div>'
       + '</div>'
       + (mem ? '<div class="order-stamp" id="stamp-'+o.id+'">🔸 '+o.name+' — <b>'+mem.stamps+'</b>/'+STAMP_GOAL+' stamps</div>' : '')
-      + '<button class="btn btn-primary btn-tiny" style="align-self:flex-start;" onclick="markReady('+o.id+')">Mark ready</button>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+        + (state.stickerMode ? '<button class="btn-sticker" onclick="printSticker('+o.id+')">🖨 Print sticker</button>' : '')
+        + '<button class="btn btn-primary btn-tiny" style="align-self:flex-start;" onclick="markReady('+o.id+')">Mark ready</button>'
+      + '</div>'
     + '</div>';
   }).join('');
 }
