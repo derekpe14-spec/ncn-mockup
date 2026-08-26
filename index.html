@@ -324,6 +324,7 @@
   .switch input{opacity:0;width:100%;height:100%;position:absolute;cursor:pointer;margin:0;}
   .switch .track{
     position:absolute;inset:0;background:var(--line);border-radius:999px;transition:background .15s ease;
+    pointer-events:none; /* let clicks fall through to the checkbox underneath */
   }
   .switch .knob{
     position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
@@ -404,6 +405,54 @@
     grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--ink-soft);font-weight:700;
   }
 
+  /* ---------- loyalty stamps ---------- */
+  .order-stamp{
+    display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--ink-soft);
+    transition:color .2s ease;
+  }
+  .order-stamp b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .order-stamp.pulse{color:var(--pink);}
+  .order-stamp.pulse b{color:var(--pink);}
+
+  .stamp-widget{
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:16px;
+    padding:14px 16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;
+  }
+  .stamp-widget-top{display:flex;justify-content:space-between;align-items:center;}
+  .stamp-widget-label{font-size:12.5px;font-weight:800;color:var(--ink-soft);}
+  .stamp-widget-count{font-size:12.5px;font-weight:800;color:var(--pink);font-variant-numeric:tabular-nums;}
+  .stamp-widget-count.full{color:var(--good);}
+  .stamp-grid{display:flex;gap:5px;flex-wrap:wrap;}
+  .stamp-dot{
+    width:20px;height:20px;border-radius:50%;flex:none;
+    border:1.5px dashed var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:10px;
+    background:transparent;color:transparent;
+  }
+  .stamp-dot.filled{border-style:solid;border-color:var(--pink);background:var(--pink);color:#fff;}
+  .stamp-grid.big .stamp-dot{width:30px;height:30px;font-size:13px;}
+
+  .reward-screen{display:flex;flex-direction:column;gap:18px;}
+  .reward-card{
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:18px;
+    padding:20px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;
+  }
+  .reward-card .rc-count{font-family:'Fredoka';font-weight:600;font-size:32px;color:var(--pink);}
+  .reward-card .rc-sub{font-size:13px;color:var(--ink-soft);font-weight:700;}
+  .reward-note{
+    background:var(--orange-soft);border-radius:14px;padding:12px 14px;
+    font-size:12.5px;font-weight:700;color:var(--ink);
+  }
+
+  .confirm-screen{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:36px 20px;flex:1;justify-content:center;}
+  .confirm-screen .big-check{font-size:44px;}
+  .confirm-screen h3{margin:0;font-family:'Fredoka';font-weight:600;font-size:20px;}
+  .confirm-screen p{margin:0;font-size:13.5px;color:var(--ink-soft);max-width:26ch;}
+  .confirm-stamp-note{
+    background:var(--pink-ghost);color:var(--pink-deep);font-weight:800;font-size:13px;
+    border-radius:12px;padding:10px 14px;
+  }
+
   /* ---------- why row ---------- */
   .why{margin-top:44px;}
   .why h2{font-size:22px;}
@@ -474,7 +523,7 @@
         <div class="phone">
           <div class="phone-screen">
             <div class="phone-top" id="phone-top">
-              <div class="greet">Good morning 👋</div>
+              <div class="greet">Good morning, <span id="greet-name"></span> 👋</div>
               <div class="store">Pick up at New Castle</div>
             </div>
             <div class="phone-body" id="phone-body">
@@ -667,6 +716,23 @@ var STATION_COLOR = {
   'Blender & Bowls': '#F2861D',
   'Coffee': '#C96A12',
   'Waffle & Snack': '#B81753'
+};
+
+// ---------- loyalty stamps ----------
+// Mirrors the punch-card wallet pass Karie already runs — same idea (stamp
+// per visit, free item after the card fills), tracked per customer here so
+// staff see it on the order board instead of a separate app.
+var STAMP_GOAL = 12;
+var CURRENT_CUSTOMER = 'Jess'; // whose phone this demo represents
+var MEMBERS = {
+  'Jess':    { stamps: 8 },
+  'Ann M.':  { stamps: 7 },
+  'Marcus':  { stamps: 3 },
+  'Coleman': { stamps: 10 },
+  'Priya':   { stamps: 1 },
+  'Tanner':  { stamps: 5 },
+  'Dee':     { stamps: 2 },
+  'Rae':     { stamps: 11 }
 };
 
 
@@ -1561,6 +1627,7 @@ function showView(v){
   document.getElementById('view-hint').textContent = v==='customer'
     ? 'What a customer sees on their phone'
     : 'What runs on the screen at your drink station';
+  if(v==='staff'){ renderQueueSummary(); renderOrders(); } // always current stamp counts when staff actually look
 }
 
 function renderAccordion(){
@@ -1688,10 +1755,73 @@ function renderPhoneBody(){
     return;
   }
 
+  if(state.view === 'rewards'){
+    cartBar.style.display = 'none';
+    body.innerHTML = rewardsScreenHTML();
+    return;
+  }
+
+  if(state.view === 'confirmed'){
+    cartBar.style.display = 'none';
+    body.innerHTML = confirmedScreenHTML();
+    return;
+  }
+
   // default: menu
   cartBar.style.display = 'flex';
-  body.innerHTML = '<div class="accordion-list" id="accordion-list"></div>';
+  body.innerHTML = '<div class="screen-pad" style="padding-bottom:0;">' + stampWidgetHTML() + '</div>'
+    + '<div class="accordion-list" id="accordion-list"></div>';
   renderAccordion();
+}
+
+function stampWidgetHTML(){
+  var m = MEMBERS[CURRENT_CUSTOMER];
+  var toGo = STAMP_GOAL - m.stamps;
+  return '<div class="stamp-widget" onclick="openRewards()">'
+    + '<div class="stamp-widget-top">'
+      + '<span class="stamp-widget-label">Your stamp card</span>'
+      + '<span class="stamp-widget-count">'+toGo+' to a free drink ›</span>'
+    + '</div>'
+    + stampGridHTML(m.stamps, false)
+  + '</div>';
+}
+
+function stampGridHTML(count, big){
+  var dots = '';
+  for(var i=0;i<STAMP_GOAL;i++){
+    dots += '<div class="stamp-dot'+(i<count?' filled':'')+'">'+(i<count?'✓':'')+'</div>';
+  }
+  return '<div class="stamp-grid'+(big?' big':'')+'">'+dots+'</div>';
+}
+
+function openRewards(){
+  state.view = 'rewards';
+  renderPhoneBody();
+}
+
+function rewardsScreenHTML(){
+  var m = MEMBERS[CURRENT_CUSTOMER];
+  var toGo = STAMP_GOAL - m.stamps;
+  return '<div class="subnav"><button class="back" onclick="goToMenu()">←</button><span class="subnav-title">Your rewards</span></div>'
+    + '<div class="screen-pad reward-screen">'
+      + '<div class="reward-card">'
+        + '<div class="rc-count num">'+m.stamps+' / '+STAMP_GOAL+'</div>'
+        + stampGridHTML(m.stamps, true)
+        + '<div class="rc-sub">'+(toGo>0 ? toGo+' more stamp'+(toGo===1?'':'s')+' and your next drink is free' : 'Card\'s full — your next drink is free!')+'</div>'
+      + '</div>'
+      + '<div class="reward-note">Standing orders punch this automatically — set one from your cart and every pickup counts, no scanning anything.</div>'
+    + '</div>';
+}
+
+function confirmedScreenHTML(){
+  var c = state.lastConfirm || {};
+  return '<div class="confirm-screen">'
+    + '<div class="big-check">✅</div>'
+    + '<h3>Order confirmed</h3>'
+    + '<p>'+(c.usual ? 'We\'ll have this ready weekdays at '+c.time+' — no need to order again.' : 'We\'ll start it soon — you\'ll get a text when it\'s ready.')+'</p>'
+    + '<div class="confirm-stamp-note">'+(c.earned ? '🎉 Card filled — your next drink is free!' : 'Stamp added — '+(STAMP_GOAL - MEMBERS[CURRENT_CUSTOMER].stamps)+' to go')+'</div>'
+    + '<button class="btn btn-primary" onclick="goToMenu()">Back to menu</button>'
+  + '</div>';
 }
 
 function detailScreenHTML(){
@@ -1752,8 +1882,29 @@ function cartScreenHTML(){
         + '</select></span>'
         + '<span class="switch"><input type="checkbox" onchange="state.saveUsual=this.checked"><span class="track"><span class="knob"></span></span></span>'
       + '</label>'
-      + '<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;">Pay & confirm — $'+subtotal.toFixed(2)+'</button>'
+      + '<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;" onclick="confirmOrder()">Pay & confirm — $'+subtotal.toFixed(2)+'</button>'
     + '</div>';
+}
+
+// Shared by both screens: a completed order earns a stamp, whether it's this
+// customer paying on their phone or staff marking a queued order ready.
+function awardStamp(name){
+  if(!MEMBERS[name]) MEMBERS[name] = { stamps: 0 };
+  var m = MEMBERS[name];
+  m.stamps++;
+  if(m.stamps >= STAMP_GOAL){ m.stamps = 0; return true; }
+  return false;
+}
+
+function confirmOrder(){
+  if(state.cart.length === 0) return;
+  var earned = awardStamp(CURRENT_CUSTOMER);
+  state.lastConfirm = { earned: earned, usual: state.saveUsual, time: state.usualTime };
+  state.cart = [];
+  state.saveUsual = false;
+  state.view = 'confirmed';
+  updateCartBadge();
+  renderPhoneBody();
 }
 
 // ---------- staff board ----------
@@ -1772,6 +1923,7 @@ function renderOrders(){
   if(list.length===0){ el.innerHTML = '<div class="order-empty">Nothing queued right now.</div>'; return; }
   el.innerHTML = list.map(function(o,i){
     var color = STATION_COLOR[o.station] || 'var(--ink-soft)';
+    var mem = MEMBERS[o.name];
     return '<div class="order-card'+(o.done?' done':'')+'" id="order-'+o.id+'">'
       + '<div class="order-head"><span class="order-num num">#'+o.id+'</span><span class="order-timer'+(o.late?' late':'')+'">'+o.since+'</span></div>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
@@ -1783,6 +1935,7 @@ function renderOrders(){
         + (o.addons ? '<div class="addons">'+o.addons+'</div>' : '')
         + '<div class="addons">for '+o.name+'</div>'
       + '</div>'
+      + (mem ? '<div class="order-stamp" id="stamp-'+o.id+'">🔸 '+o.name+' — <b>'+mem.stamps+'</b>/'+STAMP_GOAL+' stamps</div>' : '')
       + '<button class="btn btn-primary btn-tiny" style="align-self:flex-start;" onclick="markReady('+o.id+')">Mark ready</button>'
     + '</div>';
   }).join('');
@@ -1791,10 +1944,22 @@ function markReady(id){
   var card = document.getElementById('order-'+id);
   if(card) card.classList.add('done');
   var o = ORDERS.find(function(x){return x.id===id;});
-  if(o) o.done = true;
+  if(o){
+    o.done = true;
+    awardStamp(o.name);
+    var chip = document.getElementById('stamp-'+id);
+    if(chip){
+      var mem = MEMBERS[o.name];
+      chip.innerHTML = '🔸 '+o.name+' — <b>'+mem.stamps+'</b>/'+STAMP_GOAL+' stamps';
+      chip.classList.add('pulse');
+    }
+    // if the customer phone is showing the same person's stamp widget, keep it in sync
+    if(o.name === CURRENT_CUSTOMER && state.view === 'menu'){ renderPhoneBody(); }
+  }
   setTimeout(function(){ renderQueueSummary(); }, 260);
 }
 
+document.getElementById('greet-name').textContent = CURRENT_CUSTOMER;
 renderPhoneBody();
 renderQueueSummary(); renderOrders();
 </script>
