@@ -361,21 +361,21 @@
   }
   .board-top .title{font-family:'Fredoka';font-weight:600;font-size:18px;}
   .board-top .device-hint{font-size:12.5px;font-weight:700;opacity:.75;}
-  .station-tabs{
-    display:flex;gap:6px;padding:12px 16px;flex-wrap:wrap;
+  .queue-summary{
+    display:flex;gap:18px;flex-wrap:wrap;padding:12px 16px;
     border-bottom:1px solid var(--line);
     background:var(--paper-sunken);
+    font-size:13px;font-weight:700;color:var(--ink-soft);
   }
-  .station-tab{
-    padding:8px 14px;border-radius:10px;font-weight:800;font-size:13.5px;
-    background:transparent;border:1px solid var(--line);cursor:pointer;color:var(--ink-soft);
+  .queue-summary b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .queue-summary .late-count b{color:var(--pink);}
+  .station-tag{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;font-weight:800;letter-spacing:.02em;
+    padding:3px 8px;border-radius:999px;
+    background:var(--paper-sunken);color:var(--ink-soft);
   }
-  .station-tab.active{background:var(--pink);color:#fff;border-color:transparent;}
-  .station-tab .count{
-    display:inline-block;margin-left:6px;background:rgba(0,0,0,.14);
-    border-radius:999px;padding:0 6px;font-size:11.5px;
-  }
-  .station-tab.active .count{background:rgba(255,255,255,.28);}
+  .station-tag .dot{width:7px;height:7px;border-radius:50%;flex:none;}
 
   .order-grid{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
@@ -500,7 +500,7 @@
           <div class="title">Order board — live queue</div>
           <div class="device-hint">Runs on a spare iPad today · same page on a mounted TV later, no rebuild</div>
         </div>
-        <div class="station-tabs" id="station-tabs"></div>
+        <div class="queue-summary" id="queue-summary"></div>
         <div class="order-grid" id="order-grid"></div>
       </div>
     </div>
@@ -652,15 +652,22 @@ var ADDONS = {
 var STATIONS = ['Tea & Shaker','Blender & Bowls','Coffee','Waffle & Snack'];
 
 var ORDERS = [
-  { id:56, station:'Waffle & Snack', item:'Protein Waffle', addons:null, name:'Coleman', since:'5 min ago', late:true, grab:false, done:false },
-  { id:57, station:'Blender & Bowls', item:'Cookie Dough Shake', addons:null, name:'Marcus', since:'2 min ago', grab:false, done:false },
-  { id:58, station:'Tea & Shaker', item:'Bob Marley', addons:'+ Littoff Reloaded', name:'Jess', since:'1 min ago', grab:false, done:false },
-  { id:59, station:'Tea & Shaker', item:'Skittles', addons:null, name:'Tanner', since:'2 min ago', grab:false, done:false },
-  { id:60, station:'Blender & Bowls', item:'Acai Bowl', addons:null, name:'Priya', since:'4 min ago', grab:false, done:false },
-  { id:61, station:'Tea & Shaker', item:'Malibu Barbie', addons:'+ Beauty Boost', name:'Ann M.', since:'6 min ago', late:true, grab:false, done:false },
-  { id:62, station:'Coffee', item:'Mocha Blend', addons:'oat milk', name:'Dee', since:'1 min ago', grab:false, done:false },
-  { id:63, station:'Waffle & Snack', item:'Protein Truffles ×2', addons:null, name:'Rae', since:'just now', grab:true, done:false }
+  { id:61, station:'Tea & Shaker', item:'Malibu Barbie', addons:'+ Beauty Boost', name:'Ann M.', since:'6 min ago', mins:6, late:true, grab:false, done:false },
+  { id:56, station:'Waffle & Snack', item:'Protein Waffle', addons:null, name:'Coleman', since:'5 min ago', mins:5, late:true, grab:false, done:false },
+  { id:60, station:'Blender & Bowls', item:'Acai Bowl', addons:null, name:'Priya', since:'4 min ago', mins:4, grab:false, done:false },
+  { id:57, station:'Blender & Bowls', item:'Cookie Dough Shake', addons:null, name:'Marcus', since:'2 min ago', mins:2, grab:false, done:false },
+  { id:59, station:'Tea & Shaker', item:'Skittles', addons:null, name:'Tanner', since:'2 min ago', mins:2, grab:false, done:false },
+  { id:58, station:'Tea & Shaker', item:'Bob Marley', addons:'+ Littoff Reloaded', name:'Jess', since:'1 min ago', mins:1, grab:false, done:false },
+  { id:62, station:'Coffee', item:'Mocha Blend', addons:'oat milk', name:'Dee', since:'1 min ago', mins:1, grab:false, done:false },
+  { id:63, station:'Waffle & Snack', item:'Protein Truffles ×2', addons:null, name:'Rae', since:'just now', mins:0, grab:true, done:false }
 ];
+
+var STATION_COLOR = {
+  'Tea & Shaker': '#E5266B',
+  'Blender & Bowls': '#F2861D',
+  'Coffee': '#C96A12',
+  'Waffle & Snack': '#B81753'
+};
 
 
 // ===== Full recipe-binder additions (all ~600+ named drinks, built 2026-08-25) =====
@@ -1544,7 +1551,7 @@ MENU['July 4th'] = [
 ];
 
 
-var state = { view: 'menu', openCat: (SPECIAL_CATEGORIES[0] || null), selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM', station: 'Tea & Shaker' };
+var state = { view: 'menu', openCat: (SPECIAL_CATEGORIES[0] || null), selected: null, cart: [], saveUsual: false, usualTime: '7:15 AM' };
 
 function showView(v){
   document.getElementById('panel-customer').classList.toggle('active', v==='customer');
@@ -1750,23 +1757,27 @@ function cartScreenHTML(){
 }
 
 // ---------- staff board ----------
-function renderStationTabs(){
-  var el = document.getElementById('station-tabs');
-  el.innerHTML = STATIONS.map(function(s){
-    var n = ORDERS.filter(function(o){return o.station===s && !o.done;}).length;
-    return '<button class="station-tab'+(s===state.station?' active':'')+'" onclick="pickStation(\''+s+'\')">'+s+'<span class="count">'+n+'</span></button>';
-  }).join('');
+// One page, every order, oldest (longest-waiting) first — no tabs to click during a rush.
+function renderQueueSummary(){
+  var el = document.getElementById('queue-summary');
+  var open = ORDERS.filter(function(o){return !o.done;});
+  var late = open.filter(function(o){return o.late;});
+  el.innerHTML = '<span>'+open.length+' order'+(open.length===1?'':'s')+' in queue</span>'
+    + (late.length ? '<span class="late-count"><b>'+late.length+'</b> running late</span>' : '');
 }
-function pickStation(s){ state.station = s; renderStationTabs(); renderOrders(); }
 
 function renderOrders(){
   var el = document.getElementById('order-grid');
-  var list = ORDERS.filter(function(o){return o.station===state.station;});
-  if(list.length===0){ el.innerHTML = '<div class="order-empty">Nothing queued for this station.</div>'; return; }
+  var list = ORDERS.slice().sort(function(a,b){ return b.mins - a.mins; });
+  if(list.length===0){ el.innerHTML = '<div class="order-empty">Nothing queued right now.</div>'; return; }
   el.innerHTML = list.map(function(o,i){
+    var color = STATION_COLOR[o.station] || 'var(--ink-soft)';
     return '<div class="order-card'+(o.done?' done':'')+'" id="order-'+o.id+'">'
       + '<div class="order-head"><span class="order-num num">#'+o.id+'</span><span class="order-timer'+(o.late?' late':'')+'">'+o.since+'</span></div>'
-      + '<div class="fulfil-tag'+(o.grab?' grab':'')+'">'+(o.grab?'grab from fridge':'make now')+'</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+        + '<span class="station-tag"><span class="dot" style="background:'+color+';"></span>'+o.station+'</span>'
+        + '<div class="fulfil-tag'+(o.grab?' grab':'')+'">'+(o.grab?'grab from fridge':'make now')+'</div>'
+      + '</div>'
       + '<div class="order-items">'
         + '<div class="li">'+o.item+'</div>'
         + (o.addons ? '<div class="addons">'+o.addons+'</div>' : '')
@@ -1781,9 +1792,9 @@ function markReady(id){
   if(card) card.classList.add('done');
   var o = ORDERS.find(function(x){return x.id===id;});
   if(o) o.done = true;
-  setTimeout(function(){ renderStationTabs(); }, 260);
+  setTimeout(function(){ renderQueueSummary(); }, 260);
 }
 
 renderPhoneBody();
-renderStationTabs(); renderOrders();
+renderQueueSummary(); renderOrders();
 </script>
