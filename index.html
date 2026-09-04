@@ -108,6 +108,42 @@
     color:var(--ink-soft);
     opacity:0.75;
   }
+
+  .notify{
+    margin-top:26px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-width:340px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .notify input{
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    color:var(--ink);
+    font-family:'Nunito',ui-sans-serif,system-ui,sans-serif;
+    font-size:15px;
+    width:100%;
+  }
+  .notify button{
+    margin-top:2px;
+    padding:12px 20px;
+    border:none;
+    border-radius:10px;
+    background:var(--pink);
+    color:#fff;
+    font-family:'Fredoka',ui-sans-serif,system-ui,sans-serif;
+    font-weight:600;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .notify button:disabled{opacity:.6;cursor:default;}
+  .notify-msg{margin-top:10px;font-size:13.5px;min-height:18px;}
+  .notify-msg.ok{color:var(--pink-deep);font-weight:600;}
+  .notify-msg.err{color:#b00020;}
 </style>
 </head>
 <body>
@@ -118,7 +154,44 @@
     <span class="pill"><span class="dot"></span>Mobile ordering &amp; delivery — coming soon</span>
     <p class="pitch">We're building online ordering so you can skip the line and get your usual on the way. Delivery's coming too.</p>
     <p class="pitch">In the meantime, order the way you always have — stop by or reach out directly.</p>
+    <form class="notify" id="notifyForm">
+      <input type="text" id="notifyName" placeholder="Name" required>
+      <input type="tel" id="notifyPhone" placeholder="Phone number" required>
+      <input type="email" id="notifyEmail" placeholder="you@email.com" required>
+      <button type="submit" id="notifyBtn">Notify me</button>
+    </form>
+    <div class="notify-msg" id="notifyMsg">Get a heads-up the day ordering goes live.</div>
     <div class="foot">New Castle, KY</div>
   </div>
+<script>
+document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('notifyBtn');
+  const msg = document.getElementById('notifyMsg');
+  const name = document.getElementById('notifyName').value.trim();
+  const phone = document.getElementById('notifyPhone').value.trim();
+  const email = document.getElementById('notifyEmail').value.trim();
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  msg.className = 'notify-msg';
+  try {
+    const res = await fetch('https://ncn-backend.onrender.com/api/preregister', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    msg.textContent = "You're on the list — we'll let you know the moment it's live.";
+    msg.className = 'notify-msg ok';
+    document.getElementById('notifyForm').style.display = 'none';
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'notify-msg err';
+    btn.disabled = false;
+    btn.textContent = 'Notify me';
+  }
+});
+</script>
 </body>
 </html>
